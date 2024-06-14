@@ -25,6 +25,7 @@ spec:
         - ceph_nfs_frontend
         edpm_fips_mode: check
         edpm_network_config_hide_sensitive_logs: false
+        edpm_network_config_update: true
         edpm_network_config_os_net_config_mappings:
           edpm-compute-3:
             nic1: 52:54:00:60:00:59

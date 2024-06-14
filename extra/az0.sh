@@ -101,8 +101,8 @@ if [ $CONTROLPLANE -eq 1 ]; then
     kustomize build control-plane/nncp > nncp.yaml
     kustomize build control-plane > control-plane.yaml
 
-    cp -v ~/dcn/spine\&leaf/nncp.yamp nncp.yaml
-    cp -v ~/dcn/spine\&leaf/control-plane.yamp control-plane.yaml
+    cp -v ~/dcn/extra/spine\&leaf/nncp.yaml nncp.yaml
+    cp -v ~/dcn/extra/spine\&leaf/control-plane.yaml control-plane.yaml
 
     cp -v nncp.yaml /tmp/dcn/az0
     cp -v control-plane.yaml /tmp/dcn/az0
@@ -153,7 +153,7 @@ if [ $DATAPLANE -eq 1 ]; then
 fi
 
 if [ $CEPH -eq 1 ]; then
-    cp ~/dnc/spine\&leaf/hci.yaml ~/hci.yaml
+    cp ~/dcn/extra/spine\&leaf/hci.yaml ~/hci.yaml
     bash ~/dcn/extra/ceph.sh 100 ceph_az0.yaml
 fi
 
