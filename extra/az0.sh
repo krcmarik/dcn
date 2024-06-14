@@ -23,8 +23,8 @@ mkdir -p /tmp/dcn/az0
 
 for F in yq kustomize; do
     if [[ ! -e ~/.local/bin/$F ]] && [[ ! -e ~/bin/$F ]]; then
-        echo "Aborting: $F is not in ~/[.local/]bin/$F"
-        exit 1
+        wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O ~/.local/bin/yq && chmod +x ~/.local/bin/yq
+        cd ~/.local/bin; curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash; cd;
     fi
 done
 export PASS=$(cat ~/.kube/kubeadmin-password)
@@ -32,6 +32,9 @@ oc login -u kubeadmin -p $PASS https://api.ocp.openstack.lab:6443
 if [[ $? -gt 0 ]]; then
     exit 1
 fi
+
+sudo ip r a 192.168.133.0/24 via 192.168.122.1
+sudo ip r a 192.168.144.0/24 via 192.168.122.1
 
 pushd ~/src/github.com/openstack-k8s-operators/architecture
 
@@ -98,6 +101,10 @@ if [ $CONTROLPLANE -eq 1 ]; then
     kustomize build control-plane/nncp > nncp.yaml
     kustomize build control-plane > control-plane.yaml
 
+    cp -v ~/dcn/spine\&leaf/nncp.yamp nncp.yaml
+    cp -v ~/dcn/spine\&leaf/control-plane.yamp control-plane.yaml
+
+    cp -v nncp.yaml /tmp/dcn/az0
     cp -v control-plane.yaml /tmp/dcn/az0
     if [ $APPLY -eq 1 ]; then
         oc apply -f nncp.yaml
@@ -146,6 +153,7 @@ if [ $DATAPLANE -eq 1 ]; then
 fi
 
 if [ $CEPH -eq 1 ]; then
+    cp ~/dnc/spine\&leaf/hci.yaml ~/hci.yaml
     bash ~/dcn/extra/ceph.sh 100 ceph_az0.yaml
 fi
 
