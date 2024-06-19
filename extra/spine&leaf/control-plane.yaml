@@ -836,7 +836,7 @@ spec:
         - destination: 172.19.10.0/24
           nexthop: 172.19.20.1
   - dnsDomain: storagemgmt.example.com
-    mtu: 9000
+    mtu: 1496
     name: storagemgmt
     subnets:
     - allocationRanges:
