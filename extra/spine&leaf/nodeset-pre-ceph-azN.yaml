@@ -65,6 +65,9 @@ spec:
         gather_facts: false
         neutron_physical_bridge_name: br-ex
         edpm_ovn_bridge_mappings: ["leaf1:br-ex"]
+        edpm_enable_chassis_gw: true
+        edpm_ovn_availability_zones:
+          - az1
         neutron_public_interface_name: eth0
         service_net_map:
           nova_api_network: internalapi
