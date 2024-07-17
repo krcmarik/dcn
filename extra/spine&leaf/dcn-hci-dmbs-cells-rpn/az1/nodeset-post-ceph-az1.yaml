@@ -17,7 +17,7 @@ data:
 
     rbd_user = openstack
 
-    rbd_secret_uuid = <redacted>	
+    rbd_secret_uuid = fc7dee87-0b15-5ec9-9512-ef1cfd7f30ec
 
     hw_disk_discard = unmap
 
@@ -146,7 +146,7 @@ spec:
 
             rbd_user = openstack
 
-            rbd_secret_uuid = <redacted>
+            rbd_secret_uuid = fc7dee87-0b15-5ec9-9512-ef1cfd7f30ec
 
             rbd_cluster_name = az1
 
@@ -173,7 +173,7 @@ spec:
 
             rbd_user=openstack
 
-            rbd_secret_uuid=<redacted> '
+            rbd_secret_uuid=c831cda4-4650-53dd-a3eb-0862279275a0'
       databaseInstance: openstack
       preserveJobs: false
       secret: osp-secret
@@ -224,6 +224,10 @@ spec:
         secret: osp-secret
         storageRequest: 5G
       openstack-cell1:
+        replicas: 1
+        secret: osp-secret
+        storageRequest: 5G
+      openstack-cell2:
         replicas: 1
         secret: osp-secret
         storageRequest: 5G
@@ -489,6 +493,10 @@ spec:
       route: {}
     template:
       customServiceConfig: |
+        [DEFAULT]
+        router_scheduler_driver = neutron.scheduler.l3_agent_scheduler.AZLeastRoutersScheduler
+        network_scheduler_driver =  neutron.scheduler.dhcp_agent_scheduler.AZAwareWeightScheduler
+        default_availability_zones = nova,az1
         [ml2_type_vlan]
         network_vlan_ranges = datacentre:1:1000,leaf1:1:1000,leaf2:1:1000
         [neutron]
@@ -524,17 +532,45 @@ spec:
               spec:
                 type: LoadBalancer
       metadataServiceTemplate:
-        override:
-          service:
-            metadata:
-              annotations:
-                metallb.universe.tf/address-pool: internalapi
-                metallb.universe.tf/allow-shared-ip: internalapi
-                metallb.universe.tf/loadBalancerIPs: 172.17.0.80
-            spec:
-              type: LoadBalancer
+        enabled: false
       preserveJobs: false
       secret: osp-secret
+      cellTemplates:
+        cell0:
+          cellDatabaseAccount: nova-cell0
+          hasAPIAccess: true
+        cell1:
+          cellDatabaseInstance: openstack-cell1
+          cellDatabaseAccount: nova-cell1
+          cellMessageBusInstance: rabbitmq-cell1
+          hasAPIAccess: true
+          metadataServiceTemplate:
+            enabled: true
+            override:
+              service:
+                metadata:
+                  annotations:
+                    metallb.universe.tf/address-pool: internalapi
+                    metallb.universe.tf/allow-shared-ip: internalapi
+                    metallb.universe.tf/loadBalancerIPs: 172.17.0.80
+                spec:
+                  type: LoadBalancer            
+        cell2:
+          cellDatabaseInstance: openstack-cell2
+          cellDatabaseAccount: nova-cell2
+          cellMessageBusInstance: rabbitmq-cell2
+          hasAPIAccess: true        
+          metadataServiceTemplate:
+            enabled: true
+            override:
+              service:
+                metadata:
+                  annotations:
+                    metallb.universe.tf/address-pool: internalapi
+                    metallb.universe.tf/allow-shared-ip: internalapi
+                    metallb.universe.tf/loadBalancerIPs: 172.17.0.81
+                spec:
+                  type: LoadBalancer            
   octavia:
     enabled: false
     template:
@@ -601,6 +637,16 @@ spec:
             spec:
               type: LoadBalancer
         replicas: 3
+      rabbitmq-cell2:
+        override:
+          service:
+            metadata:
+              annotations:
+                metallb.universe.tf/address-pool: internalapi
+                metallb.universe.tf/loadBalancerIPs: 172.17.0.87
+            spec:
+              type: LoadBalancer
+        replicas: 3          
   secret: osp-secret
   storageClass: local-storage
   swift:
@@ -682,14 +728,14 @@ spec:
         edpm_network_config_hide_sensitive_logs: false
         edpm_network_config_os_net_config_mappings:
           edpm-dcn1-compute-0:
-            nic1: 52:54:00:2e:69:63
-            nic2: 52:54:00:6f:62:2e
+            nic1: 52:54:00:6d:87:0b
+            nic2: 52:54:00:31:53:28
           edpm-dcn1-compute-1:
-            nic1: 52:54:00:b6:38:35
-            nic2: 52:54:00:23:58:f9
+            nic1: 52:54:00:af:0b:35
+            nic2: 52:54:00:2b:df:a1
           edpm-dcn1-compute-2:
-            nic1: 52:54:00:ab:0c:5c
-            nic2: 52:54:00:7f:2f:70
+            nic1: 52:54:00:7b:ce:32
+            nic2: 52:54:00:ed:cf:cd          
         edpm_network_config_template: "---\n{% set mtu_list = [ctlplane_mtu] %}\n\
           {% for network in nodeset_networks %}\n{{ mtu_list.append(lookup('vars',\
           \ networks_lower[network] ~ '_mtu')) }}\n{%- endfor %}\n{% set min_viable_mtu\
@@ -720,6 +766,9 @@ spec:
         neutron_physical_bridge_name: br-ex
         neutron_public_interface_name: eth0
         edpm_ovn_bridge_mappings: ["leaf1:br-ex"]
+        edpm_enable_chassis_gw: true
+        edpm_ovn_availability_zones:
+          - az1
         service_net_map:
           nova_api_network: internalapi
           nova_libvirt_network: internalapi
@@ -730,6 +779,7 @@ spec:
         storage_mtu: 9000
         timesync_ntp_servers:
         - hostname: pool.ntp.org
+        edpm_neutron_metadata_config_src: "/var/lib/openstack/configs/neutron-metadatacell2"
     ansibleSSHPrivateKeySecret: dataplane-ansible-ssh-private-key-secret
     extraMounts:
     - extraVolType: Ceph
@@ -809,9 +859,39 @@ spec:
   - install-certs
   - ceph-client
   - ovn
-  - neutron-metadata
+  - neutron-metadatacell2
   - libvirt
-  - nova-custom-ceph-az1
+  - nova-custom-ceph-az1    
+---
+apiVersion: dataplane.openstack.org/v1beta1
+kind: OpenStackDataPlaneService
+metadata:
+  name: neutron-metadatacell2
+  namespace: openstack
+spec:
+  addCertMounts: false
+  caCerts: combined-ca-bundle
+  containerImageFields:
+  - EdpmNeutronMetadataAgentImage
+  dataSources:
+  - secretRef:
+      name: neutron-ovn-metadata-agent-neutron-config
+  - secretRef:
+      name: nova-cell2-metadata-neutron-config
+  edpmServiceType: neutron-metadata
+  playbook: osp.edpm.neutron_metadata
+  tlsCerts:
+    default:
+      contents:
+      - dnsnames
+      - ips
+      issuer: osp-rootca-issuer-ovn
+      keyUsages:
+      - digital signature
+      - key encipherment
+      - client auth
+      networks:
+      - ctlplane    
 ---
 apiVersion: dataplane.openstack.org/v1beta1
 kind: OpenStackDataPlaneService
@@ -824,7 +904,7 @@ spec:
   - configMapRef:
       name: ceph-nova-az1
   - secretRef:
-      name: nova-cell1-compute-config
+      name: nova-cell2-compute-config
   - secretRef:
       name: nova-migration-ssh-key
   edpmServiceType: nova
@@ -839,3 +919,4 @@ spec:
       issuer: osp-rootca-issuer-internal
       networks:
       - ctlplane
+

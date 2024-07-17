@@ -7,7 +7,7 @@ import sys
 import yaml
 
 
-SRC='dcn_src'
+SRC='dcn-hci-dmbs-cells-rpn'
 DST='dcn'
 SECRETS = ['ceph-conf-files',
            'dataplane-ansible-ssh-private-key-secret',

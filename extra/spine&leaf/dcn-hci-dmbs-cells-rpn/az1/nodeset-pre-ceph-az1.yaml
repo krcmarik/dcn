@@ -25,17 +25,16 @@ spec:
         - ceph_nfs_frontend
         edpm_fips_mode: check
         edpm_network_config_hide_sensitive_logs: false
-        edpm_network_config_update: true
         edpm_network_config_os_net_config_mappings:
-          edpm-compute-3:
-            nic1: 52:54:00:60:00:59
-            nic2: 52:54:00:35:09:a1
-          edpm-compute-4:
-            nic1: 52:54:00:e1:b1:6c
-            nic2: 52:54:00:68:07:ba
-          edpm-compute-5:
-            nic1: 52:54:00:f6:df:4a
-            nic2: 52:54:00:40:7d:23
+          edpm-dcn1-compute-0:
+            nic1: 52:54:00:6d:87:0b
+            nic2: 52:54:00:31:53:28
+          edpm-dcn1-compute-1:
+            nic1: 52:54:00:af:0b:35
+            nic2: 52:54:00:2b:df:a1
+          edpm-dcn1-compute-2:
+            nic1: 52:54:00:7b:ce:32
+            nic2: 52:54:00:ed:cf:cd
         edpm_network_config_template: "---\n{% set mtu_list = [ctlplane_mtu] %}\n\
           {% for network in nodeset_networks %}\n{{ mtu_list.append(lookup('vars',\
           \ networks_lower[network] ~ '_mtu')) }}\n{%- endfor %}\n{% set min_viable_mtu\
@@ -55,23 +54,18 @@ spec:
           \ '_host_routes') }}\n{% endfor %}\n"
         edpm_nodes_validation_validate_controllers_icmp: false
         edpm_nodes_validation_validate_gateway_icmp: false
-        edpm_selinux_mode: enforcing
         edpm_sshd_allowed_ranges:
         - 192.168.133.0/24
         - 192.168.122.0/24
         - 192.168.111.0/24
         edpm_sshd_configure_firewall: true
-        enable_debug: true
         gather_facts: false
         neutron_physical_bridge_name: br-ex
         edpm_ovn_bridge_mappings: ["leaf1:br-ex"]
+        neutron_public_interface_name: eth0
         edpm_enable_chassis_gw: true
         edpm_ovn_availability_zones:
           - az1
-        neutron_public_interface_name: eth0
-        service_net_map:
-          nova_api_network: internalapi
-          nova_libvirt_network: internalapi
         storage_mgmt_cidr: '24'
         storage_mgmt_host_routes: []
         storage_mgmt_mtu: 9000
@@ -80,16 +74,6 @@ spec:
         timesync_ntp_servers:
         - hostname: pool.ntp.org
     ansibleSSHPrivateKeySecret: dataplane-ansible-ssh-private-key-secret
-    extraMounts:
-    - extraVolType: Ceph
-      mounts:
-      - mountPath: /etc/ceph
-        name: ceph
-        readOnly: true
-      volumes:
-      - name: ceph
-        secret:
-          secretName: ceph-conf-files
     managementNetwork: ctlplane
     networks:
     - defaultRoute: true
@@ -102,13 +86,13 @@ spec:
     - name: tenant
       subnetName: subnet2
   nodes:
-    edpm-compute-3:
+    edpm-dcn1-compute-0:
       ansible:
-        host: 192.168.133.180
-      hostName: compute-3
+        host: 192.168.133.100
+      hostName: dcn1-compute-0
       networks:
       - defaultRoute: true
-        fixedIP: 192.168.133.180
+        fixedIP: 192.168.133.100
         name: ctlplane
         subnetName: subnet2
       - name: internalapi
@@ -119,13 +103,13 @@ spec:
         subnetName: subnet2
       - name: tenant
         subnetName: subnet2
-    edpm-compute-4:
+    edpm-dcn1-compute-1:
       ansible:
-        host: 192.168.133.109
-      hostName: compute-4
+        host: 192.168.133.101
+      hostName: dcn1-compute-1
       networks:
       - defaultRoute: true
-        fixedIP: 192.168.133.109
+        fixedIP: 192.168.133.101
         name: ctlplane
         subnetName: subnet2
       - name: internalapi
@@ -136,13 +120,13 @@ spec:
         subnetName: subnet2
       - name: tenant
         subnetName: subnet2
-    edpm-compute-5:
+    edpm-dcn1-compute-2:
       ansible:
-        host: 192.168.133.185
-      hostName: compute-5
+        host: 192.168.133.102
+      hostName: dcn1-compute-2
       networks:
       - defaultRoute: true
-        fixedIP: 192.168.133.185
+        fixedIP: 192.168.133.102
         name: ctlplane
         subnetName: subnet2
       - name: internalapi
@@ -155,9 +139,12 @@ spec:
         subnetName: subnet2
   preProvisioned: true
   services:
-  - install-certs
-  - ceph-client
-  - ovn
-  - neutron-metadata
-  - libvirt
-  - nova-custom-ceph-az1
+  - bootstrap
+  - configure-network
+  - validate-network
+  - install-os
+  - ceph-hci-pre
+  - configure-os
+  - ssh-known-hosts
+  - run-os
+  - reboot-os
